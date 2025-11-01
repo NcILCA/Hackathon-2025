@@ -9,13 +9,12 @@
     <style>
         /* Custom styles for the loader */
         .loader {
-            border-top-color: #3498db;
-            -webkit-animation: spin 1s linear infinite;
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
             animation: spin 1s linear infinite;
-        }
-        @-webkit-keyframes spin {
-            0% { -webkit-transform: rotate(0deg); }
-            100% { -webkit-transform: rotate(360deg); }
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -31,17 +30,17 @@
         <!-- Header -->
         <header class="mb-8 text-center">
             <h1 class="text-4xl font-bold text-gray-800">AI Scholarship Matcher</h1>
-            <p class="text-lg text-gray-600 mt-2">Enter your details, and let AI find scholarships you qualify for.</p>
+            <p class="text-lg text-gray-600 mt-2">Enter your details, and let AI find scholarships you qualify for using up-to-date web search.</p>
         </header>
 
         <!-- Input Form -->
-        <div class="bg-white p-8 rounded-lg shadow-xl">
+        <div class="bg-white p-8 rounded-xl shadow-2xl">
             <form id="scholarship-form">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Academic Level -->
                     <div>
                         <label for="academic-level" class="block text-sm font-semibold text-gray-700 mb-2">Academic Level</label>
-                        <select id="academic-level" name="academic-level" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="academic-level" name="academic-level" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
                             <option value="High School Senior">High School Senior</option>
                             <option value="Undergraduate (Freshman)">Undergraduate (Freshman)</option>
                             <option value="Undergraduate (Sophomore)">Undergraduate (Sophomore)</option>
@@ -54,32 +53,32 @@
 
                     <!-- GPA -->
                     <div>
-                        <label for="gpa" class="block text-sm font-semibold text-gray-700 mb-2">Current GPA</label>
-                        <input type="number" id="gpa" name="gpa" min="0.0" max="5.0" step="0.1" placeholder="e.g., 3.7" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <label for="gpa" class="block text-sm font-semibold text-gray-700 mb-2">Current GPA (e.g., 3.7)</label>
+                        <input type="number" id="gpa" name="gpa" min="0.0" max="5.0" step="0.1" placeholder="e.g., 3.7" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" required>
                     </div>
                 </div>
 
                 <!-- Major / Field of Study -->
                 <div class="mt-6">
                     <label for="major" class="block text-sm font-semibold text-gray-700 mb-2">Major / Field of Study</label>
-                    <input type="text" id="major" name="major" placeholder="e.g., Computer Science, Nursing, Art History" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <input type="text" id="major" name="major" placeholder="e.g., Civil Engineering, Nursing, Art History" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" required>
                 </div>
 
                 <!-- Interests / Skills / Extracurriculars -->
                 <div class="mt-6">
-                    <label for="interests" class="block text-sm font-semibold text-gray-700 mb-2">Interests, Skills, & Extracurriculars</label>
-                    <textarea id="interests" name="interests" rows="4" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Volunteering at animal shelter, debate team captain, proficient in Python, plays violin"></textarea>
+                    <label for="interests" class="block text-sm font-semibold text-gray-700 mb-2">Key Interests, Skills, & Extracurriculars</label>
+                    <textarea id="interests" name="interests" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="e.g., Volunteering at animal shelter, debate team captain, proficient in Python, plays violin"></textarea>
                 </div>
 
                 <!-- Demographic / Personal Info -->
                 <div class="mt-6">
                     <label for="demographics" class="block text-sm font-semibold text-gray-700 mb-2">Demographic / Personal Info (Optional)</label>
-                    <textarea id="demographics" name="demographics" rows="3" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., First-generation student, resident of Texas, member of [specific group], financial need"></textarea>
+                    <textarea id="demographics" name="demographics" rows="2" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="e.g., First-generation student, resident of Texas, member of specific group, financial need"></textarea>
                 </div>
 
                 <!-- Submit Button -->
                 <div class="mt-8">
-                    <button type="submit" id="submit-button" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-300 ease-in-out disabled:bg-gray-400">
+                    <button type="submit" id="submit-button" class="w-full bg-blue-600 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-700 transition-colors duration-300 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed">
                         Find My Scholarships
                     </button>
                 </div>
@@ -87,16 +86,16 @@
         </div>
 
         <!-- Results Section -->
-        <div id="results-container" class="bg-white p-8 rounded-lg shadow-xl mt-10 hidden">
+        <div id="results-container" class="bg-white p-8 rounded-xl shadow-2xl mt-10 hidden">
             <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">Matching Scholarships</h2>
             
             <!-- Loader -->
             <div id="loader" class="flex justify-center items-center h-32 hidden">
-                <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-20 w-20"></div>
+                <div class="loader"></div>
             </div>
 
             <!-- Error Message -->
-            <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-6" role="alert">
+            <div id="error-message" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6" role="alert">
                 <strong class="font-bold">Error:</strong>
                 <span class="block sm:inline" id="error-text"></span>
             </div>
@@ -121,13 +120,47 @@
         const resultsList = document.getElementById('results-list');
 
         // --- Gemini API Configuration ---
-        // NOTE: The API key is an empty string. The environment will provide it.
         const API_KEY = ""; 
         const API_MODEL = "gemini-2.5-flash-preview-09-2025";
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent?key=${API_KEY}`;
 
         // --- Event Listener ---
         form.addEventListener('submit', handleFormSubmit);
+
+        /**
+         * Clears previous results and sets the loading state of the application.
+         * @param {boolean} isLoading - Whether the application is currently loading.
+         */
+        function setLoading(isLoading) {
+            // Ensure results container is visible when starting a search
+            resultsContainer.classList.remove('hidden');
+
+            if (isLoading) {
+                // 1. ERASE PAST SEARCH RESULTS (Addressing user request)
+                resultsList.innerHTML = '';
+                errorMessage.classList.add('hidden');
+                
+                // 2. Show loader and disable button
+                loader.classList.remove('hidden');
+                submitButton.disabled = true;
+                submitButton.textContent = 'Searching...';
+            } else {
+                // Hide loader and enable button
+                loader.classList.add('hidden');
+                submitButton.disabled = false;
+                submitButton.textContent = 'Find My Scholarships';
+            }
+        }
+        
+        /**
+         * Displays an error message.
+         * @param {string} message - The error message to display.
+         */
+        function displayError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+            resultsList.innerHTML = ''; // Ensure list is clear if an error occurred
+        }
 
         /**
          * Fetches a resource with exponential backoff retry logic.
@@ -180,8 +213,8 @@
                 demographics: formData.get('demographics')
             };
 
-            // 2. Construct the prompts and schema
-            const systemPrompt = "You are a world-class scholarship research assistant. Your task is to find relevant, current, and legitimate scholarships for a student based on their profile. You MUST use the provided Google Search tool to find scholarships. Provide your findings as a JSON object.";
+            // 2. Construct the prompts
+            const systemPrompt = "You are a world-class scholarship research assistant. Your task is to find relevant, current, and legitimate scholarships for a student based on their profile. You MUST use the provided Google Search tool to find scholarships. Provide your findings as a JSON object with a single root key 'scholarships' that holds an array of scholarship objects. Do not include any text, headers, or explanations outside the JSON block.";
             
             const userPrompt = `
                 Here is the student's profile:
@@ -199,37 +232,16 @@
                 4.  "deadline": The application deadline (e.g., "October 31, 2025", "Varies").
                 5.  "url": The direct URL to the scholarship information or application page.
 
-                Return ONLY a valid JSON object adhering to the specified schema.
+                Return ONLY a valid JSON object adhering to the specified format.
             `;
-
-            const schema = {
-                type: "OBJECT",
-                properties: {
-                    "scholarships": {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                "name": { type: "STRING" },
-                                "description": { type: "STRING" },
-                                "amount": { type: "STRING" },
-                                "deadline": { type: "STRING" },
-                                "url": { type: "STRING" }
-                            },
-                            required: ["name", "description", "amount", "deadline", "url"]
-                        }
-                    }
-                },
-                required: ["scholarships"]
-            };
 
             // 3. Call the Gemini API
             try {
-                const responseData = await callGeminiApi(userPrompt, systemPrompt, schema);
+                const responseData = await callGeminiApi(userPrompt, systemPrompt);
                 if (responseData && responseData.scholarships) {
                     displayResults(responseData.scholarships);
                 } else {
-                    displayError("The API returned an unexpected format. No scholarships found.");
+                    displayError("The AI returned an unexpected format. Please try again.");
                 }
             } catch (error) {
                 console.error("Error calling Gemini API:", error);
@@ -243,10 +255,9 @@
          * Calls the Gemini API with exponential backoff.
          * @param {string} userPrompt - The user's query.
          * @param {string} systemPrompt - The system instruction.
-         * @param {object} schema - The JSON schema for the response.
          * @returns {Promise<object>} - The parsed JSON response from the API.
          */
-        async function callGeminiApi(userPrompt, systemPrompt, schema) {
+        async function callGeminiApi(userPrompt, systemPrompt) {
             const payload = {
                 contents: [{ 
                     parts: [{ text: userPrompt }] 
@@ -259,15 +270,6 @@
                 systemInstruction: {
                     parts: [{ text: systemPrompt }]
                 },
-                // 3. Add Generation Config for structured JSON output
-                // REMOVED: This conflicts with the 'tools' property, causing a 400 error.
-                // We will rely on the prompt instructions to get JSON output.
-                /*
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: schema
-                }
-                */
             };
             
             const response = await fetchWithBackoff(API_URL, {
@@ -281,20 +283,16 @@
             if (!response.ok) {
                 let errorBody = await response.text();
                 try {
-                    // Try to parse as JSON for more detailed error info from Gemini
                     const errorJson = JSON.parse(errorBody);
                     if (errorJson.error && errorJson.error.message) {
                         errorBody = errorJson.error.message;
                     }
-                } catch (e) {
-                    // It wasn't JSON, just use the raw text
-                }
+                } catch (e) {} // Ignore parse error if body isn't JSON
                 throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
             }
 
             const result = await response.json();
             
-            // Extract the text part and parse it as JSON
             const candidate = result.candidates?.[0];
             const jsonText = candidate?.content?.parts?.[0]?.text;
 
@@ -303,96 +301,63 @@
                     console.error("Prompt Feedback:", result.promptFeedback);
                     throw new Error(`Request was blocked. Reason: ${result.promptFeedback.blockReason}`);
                 }
-                throw new Error("Invalid API response structure. No content part found.");
+                throw new Error("Invalid API response structure. No text content part found.");
             }
 
-            // The response is now plain text, and we must parse the JSON from it.
-            // The model was prompted to return *only* JSON.
+            // --- REVISED AND IMPROVED JSON PARSING LOGIC ---
             try {
-                // Sometimes the model wraps the JSON in markdown
-                const jsonMatch = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
-                if (jsonMatch && jsonMatch[1]) {
-                    // Found JSON in a markdown block
-                    return JSON.parse(jsonMatch[1]);
-                } else {
-                    // Assume the entire response is the JSON string
-                    return JSON.parse(jsonText);
-                }
-            } catch (parseError) {
-                console.error("Failed to parse JSON from API response:", jsonText, parseError);
-                throw new Error(`Failed to parse the API's response. Make sure it's valid JSON.`);
-            }
-        }
+                let cleanJsonText = jsonText.trim();
 
-        /**
-         * Displays the scholarship results as cards.
-         * @param {Array<object>} scholarships - An array of scholarship objects.
-         */
-        function displayResults(scholarships) {
-            resultsList.innerHTML = ''; // Clear previous results
+                // 1. Aggressively strip markdown code block wrappers (```json, ```, etc.)
+                cleanJsonText = cleanJsonText
+                    .replace(/```json\s*/gs, '') 
+                    .replace(/```/gs, '')
+                    .trim();
 
-            if (scholarships.length === 0) {
-                resultsList.innerHTML = `<p class="text-gray-600 text-center">No matching scholarships were found based on your profile. Try broadening your search terms.</p>`;
-                return;
-            }
-
-            scholarships.forEach(scholarship => {
-                const card = document.createElement('div');
-                card.className = 'bg-gray-50 border border-gray-200 rounded-lg p-6 shadow-sm transform transition-transform hover:scale-[1.02] hover:shadow-md';
+                let finalJsonString = cleanJsonText;
                 
-                card.innerHTML = `
-                    <h3 class="text-xl font-bold text-blue-700">${escapeHTML(scholarship.name)}</h3>
-                    <p class="text-gray-700 mt-2">${escapeHTML(scholarship.description)}</p>
-                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <span class="text-sm font-semibold text-gray-500">Amount</span>
-                            <p class="text-lg font-semibold text-gray-900">${escapeHTML(scholarship.amount) || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <span class="text-sm font-semibold text-gray-500">Deadline</span>
-                            <p class="text-lg font-semibold text-gray-900">${escapeHTML(scholarship.deadline) || 'N/A'}</p>
-                        </div>
-                    </div>
-                    <div class="mt-5">
-                        <a href="${escapeHTML(scholarship.url)}" target="_blank" rel="noopener noreferrer" class="inline-block bg-green-600 text-white font-semibold py-2 px-5 rounded-md hover:bg-green-700 transition-colors">
-                            View Details &rarr;
-                        </a>
-                    </div>
-                `;
-                resultsList.appendChild(card);
-            });
-        }
+                // 2. Find the start and end of the outermost JSON structure ({...} or [...])
+                const firstIndex = finalJsonString.search(/[\{\[]/);
+                
+                if (firstIndex !== -1) {
+                    const startChar = finalJsonString[firstIndex];
+                    const endChar = (startChar === '{') ? '}' : ']';
+                    const lastIndex = finalJsonString.lastIndexOf(endChar);
 
-        /**
-         * Displays an error message.
-         * @param {string} message - The error message to display.
-         */
-        function displayError(message) {
-            errorText.textContent = message;
-            errorMessage.classList.remove('hidden');
-        }
+                    if (lastIndex > firstIndex) {
+                        // Extract only the content from the first brace/bracket to the last
+                        finalJsonString = finalJsonString.substring(firstIndex, lastIndex + 1);
+                    } else {
+                        throw new Error("Cannot find matching closing brace/bracket.");
+                    }
+                } else {
+                    throw new Error("No starting JSON character ({ or [) found.");
+                }
 
-        /**
-         * Toggles the loading state of the UI.
-         * @param {boolean} isLoading - Whether to show the loading state.
-         */
-        function setLoading(isLoading) {
-            if (isLoading) {
-                submitButton.disabled = true;
-                submitButton.textContent = 'Searching...';
-                resultsContainer.classList.remove('hidden');
-                loader.classList.remove('hidden');
-                errorMessage.classList.add('hidden');
-                resultsList.innerHTML = '';
-            } else {
-                submitButton.disabled = false;
-                submitButton.textContent = 'Find My Scholarships';
-                loader.classList.add('hidden');
+                // 3. Attempt to parse the cleaned text
+                let parsedResult = JSON.parse(finalJsonString);
+                
+                // 4. Normalize the result: ensure it is an object with a 'scholarships' key
+                if (Array.isArray(parsedResult)) {
+                    // Model returned a bare array (like in your error log), wrap it
+                    return { scholarships: parsedResult };
+                } else if (typeof parsedResult === 'object' && parsedResult !== null && parsedResult.scholarships) {
+                    // Model returned the full object, as expected
+                    return parsedResult;
+                } else {
+                    throw new Error("Parsed content was neither a JSON array nor an object containing a 'scholarships' key.");
+                }
+                
+            } catch (parseError) {
+                // If parsing fails, throw a specific error with the raw text in the console
+                console.error("Failed to parse JSON from raw API response. Raw Text:", jsonText, parseError);
+                throw new Error(`The model response could not be parsed as JSON. Syntax Error: ${parseError.message}.`);
             }
+            // --- END REVISED JSON PARSING LOGIC ---
         }
-        
+
         /**
-         * Escapes HTML to prevent XSS.
+         * Simple utility to escape HTML characters in dynamic text.
          * @param {string} str - The string to escape.
          * @returns {string} - The escaped string.
          */
@@ -404,8 +369,47 @@
                     '<': '&lt;',
                     '>': '&gt;',
                     '"': '&quot;',
-                    "'": '&#039;'
+                    "'": '&#39;'
                 }[m];
+            });
+        }
+
+        /**
+         * Displays the scholarship results as cards.
+         * @param {Array<object>} scholarships - An array of scholarship objects.
+         */
+        function displayResults(scholarships) {
+            resultsList.innerHTML = ''; // Clear previous results
+
+            if (scholarships.length === 0) {
+                resultsList.innerHTML = `<p class="text-gray-600 text-center p-4 rounded-lg bg-yellow-50 border border-yellow-200">No matching scholarships were found based on your profile. Try broadening your search terms.</p>`;
+                return;
+            }
+
+            scholarships.forEach(scholarship => {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-50 border border-gray-200 rounded-xl p-6 shadow-md transition-all duration-300 hover:shadow-lg hover:border-blue-300';
+                
+                card.innerHTML = `
+                    <h3 class="text-xl font-bold text-blue-700">${escapeHTML(scholarship.name)}</h3>
+                    <p class="text-gray-700 mt-2">${escapeHTML(scholarship.description)}</p>
+                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-4">
+                        <div>
+                            <span class="text-xs font-semibold uppercase text-gray-500">Amount</span>
+                            <p class="text-lg font-bold text-green-700">${escapeHTML(scholarship.amount) || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs font-semibold uppercase text-gray-500">Deadline</span>
+                            <p class="text-lg font-bold text-red-600">${escapeHTML(scholarship.deadline) || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <a href="${escapeHTML(scholarship.url)}" target="_blank" rel="noopener noreferrer" class="inline-block bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg shadow-md hover:bg-blue-700 transition-colors transform hover:-translate-y-0.5">
+                            View Details &rarr;
+                        </a>
+                    </div>
+                `;
+                resultsList.appendChild(card);
             });
         }
     </script>
