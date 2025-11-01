@@ -1,533 +1,430 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { getAuth, signInWithCustomToken, signInAnonymously } from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { Search, GraduationCap, Users, User, Clock, CheckCircle } from 'lucide-react';
-
-// --- Global Variables (Provided by Canvas Environment) ---
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-// __initial_auth_token is accessed within the useEffect for security
-
-/**
- * Utility function to perform exponential backoff for API retries.
- * @param {Function} fn - The function to execute.
- * @param {number} maxRetries - Maximum number of retries.
- * @param {number} delay - Initial delay in ms.
- */
-async function retryOperation(fn, maxRetries = 3, delay = 1000) {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (attempt === maxRetries - 1) {
-        throw error;
-      }
-      // Wait for exponential backoff time
-      await new Promise(resolve => setTimeout(resolve, delay * (2 ** attempt)));
-    }
-  }
-}
-
-// --- Main Application Component ---
-const App = () => {
-  // State for Firebase and Auth
-  const [db, setDb] = useState(null);
-  const [auth, setAuth] = useState(null);
-  const [userId, setUserId] = useState(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
-
-  // State for Questionnaire & Results
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    name: '',
-    age: '',
-    ethnicity: '',
-    major: '',
-    gpa: '',
-    extracurriculars: '',
-  });
-
-  const [scholarshipResults, setScholarshipResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [sources, setSources] = useState([]);
-
-  // --- Firebase Initialization and Authentication ---
-  useEffect(() => {
-    try {
-      if (Object.keys(firebaseConfig).length === 0) {
-        console.error("Firebase config is empty. Skipping initialization.");
-        return;
-      }
-      
-      const app = initializeApp(firebaseConfig);
-      const firestore = getFirestore(app);
-      const firebaseAuth = getAuth(app);
-
-      setDb(firestore);
-      setAuth(firebaseAuth);
-
-      const authenticate = async () => {
-        const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        try {
-          if (initialToken) {
-            await signInWithCustomToken(firebaseAuth, initialToken);
-          } else {
-            await signInAnonymously(firebaseAuth);
-          }
-        } catch (e) {
-          console.error("Firebase auth failed:", e);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scholarship Matcher - Light Mode</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the loader */
+        .loader {
+            border: 8px solid #E5E7EB; /* Gray 200 */
+            border-top: 8px solid #4F46E5; /* Indigo 600 for the spinner */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
         }
-      };
-
-      const unsubscribe = firebaseAuth.onAuthStateChanged(user => {
-        if (user) {
-          setUserId(user.uid);
-        } else {
-          setUserId(crypto.randomUUID()); // Anonymous ID fallback
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-        setIsAuthReady(true);
-      });
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased min-h-screen text-gray-800">
 
-      authenticate();
-      return () => unsubscribe();
+    <!-- Main Content Container -->
+    <div class="container mx-auto max-w-3xl p-6 md:p-10">
+        
+        <!-- Header with Logo and Vibrant Title -->
+        <header class="mb-10 text-center">
+            <div class="flex flex-col items-center justify-center">
+                <!-- SVG Logo: Magnifying Glass (Search) -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-16 h-16 text-indigo-500 mb-2">
+                    <path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.643 4.644a.75.75 0 0 1-1.06 1.06l-4.644-4.643A8.25 8.25 0 0 1 2.25 10.5Z" clip-rule="evenodd" />
+                </svg>
+                <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600 tracking-tight">ScholarSearch</h1>
+                <p class="text-xl text-gray-500 mt-2 font-medium">Find your funding—guaranteed open deadlines.</p>
+            </div>
+        </header>
 
-    } catch (e) {
-      console.error("Failed to initialize Firebase:", e);
-    }
-  }, []);
-  
-  // --- Form Handlers ---
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+        <!-- Input Form -->
+        <div class="bg-white p-8 rounded-xl shadow-xl shadow-indigo-100/50">
+            <form id="scholarship-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Academic Level -->
+                    <div>
+                        <label for="academic-level" class="block text-sm font-semibold text-gray-700 mb-2">Academic Level</label>
+                        <select id="academic-level" name="academic-level" class="w-full p-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow">
+                            <option value="High School Senior">High School Senior</option>
+                            <option value="Undergraduate (Freshman)">Undergraduate (Freshman)</option>
+                            <option value="Undergraduate (Sophomore)">Undergraduate (Sophomore)</option>
+                            <option value="Undergraduate (Junior)">Undergraduate (Junior)</option>
+                            <option value="Undergraduate (Senior)">Undergraduate (Senior)</option>
+                            <option value="Graduate Student">Graduate Student</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
 
-  const goToNextStep = () => {
-    setStep(prev => prev + 1);
-  };
-  
-  const goToPreviousStep = () => {
-    setStep(prev => prev - 1);
-  };
+                    <!-- GPA -->
+                    <div>
+                        <label for="gpa" class="block text-sm font-semibold text-gray-700 mb-2">Current GPA (e.g., 3.7)</label>
+                        <input type="number" id="gpa" name="gpa" min="0.0" max="5.0" step="0.1" placeholder="e.g., 3.7" class="w-full p-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow" required>
+                    </div>
+                </div>
 
-  // --- Gemini API Call Logic ---
-  const searchScholarships = useCallback(async () => {
-    if (loading) return;
+                <!-- Major / Field of Study -->
+                <div class="mt-6">
+                    <label for="major" class="block text-sm font-semibold text-gray-700 mb-2">Major / Field of Study</label>
+                    <input type="text" id="major" name="major" placeholder="e.g., Civil Engineering, Nursing, Art History" class="w-full p-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow" required>
+                </div>
 
-    setError(null);
-    setLoading(true);
-    setScholarshipResults([]);
-    setSources([]);
+                <!-- Interests / Skills / Extracurriculars -->
+                <div class="mt-6">
+                    <label for="interests" class="block text-sm font-semibold text-gray-700 mb-2">Key Interests, Skills, & Extracurriculars</label>
+                    <textarea id="interests" name="interests" rows="3" class="w-full p-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow" placeholder="e.g., Volunteering at animal shelter, debate team captain, proficient in Python, plays violin"></textarea>
+                </div>
 
-    const userPrompt = `I am looking for undergraduate scholarship opportunities. My profile is as follows: 
-      - Current Age/Standing: ${formData.age || 'Not specified'}
-      - Intended Major/Field of Study: ${formData.major || 'Any field'}
-      - GPA/Academic Standing (out of 4.0): ${formData.gpa || 'Not specified'}
-      - Background/Ethnicity: ${formData.ethnicity || 'Not specified'}
-      - Extracurriculars/Interests: ${formData.extracurriculars || 'General academic interests'}
-      
-      Please search the web for 3-5 current, relevant, and unique scholarships that match this profile. Do not include scholarships that are expired or only relevant for specific colleges.
+                <!-- Demographic / Personal Info -->
+                <div class="mt-6">
+                    <label for="demographics" class="block text-sm font-semibold text-gray-700 mb-2">Demographic / Personal Info (Optional)</label>
+                    <textarea id="demographics" name="demographics" rows="2" class="w-full p-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow" placeholder="e.g., First-generation student, resident of Texas, member of specific group, financial need"></textarea>
+                </div>
 
-      Return the results as a JSON array following the provided schema. Each object must include the scholarship name, a concise description, a summary of the eligibility requirements, and the source where the information was found (e.g., the official website or a major scholarship platform).`;
-
-    const systemPrompt = "You are a specialized Scholarship Search Assistant. Your goal is to find relevant scholarships based on the user's profile using Google Search grounding. You must respond ONLY with a JSON object that strictly adheres to the provided schema.";
-
-    const schema = {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          name: { "type": "STRING", description: "The official name of the scholarship." },
-          description: { "type": "STRING", description: "A brief, one-sentence summary of the scholarship." },
-          eligibility: { "type": "STRING", description: "A concise list of main eligibility criteria (e.g., 'Minimum 3.5 GPA, US Citizen, Studying Engineering')." },
-          source: { "type": "STRING", description: "The official website URL or title of the scholarship program." }
-        },
-        propertyOrdering: ["name", "description", "eligibility", "source"]
-      }
-    };
-
-    const apiKey = ""; // API Key handled by Canvas
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-    const payload = {
-      contents: [{ parts: [{ text: userPrompt }] }],
-      tools: [{ "google_search": {} }],
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: schema
-      }
-    };
-
-    try {
-      const fetchApi = async () => {
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        const candidate = result.candidates?.[0];
-
-        if (candidate && candidate.content?.parts?.[0]?.text) {
-          const jsonText = candidate.content.parts[0].text;
-          const parsedJson = JSON.parse(jsonText);
-
-          if (Array.isArray(parsedJson)) {
-            setScholarshipResults(parsedJson);
-          } else {
-            console.error("Gemini returned non-array structure:", parsedJson);
-            // Fallback for cases where Gemini wraps the array
-            if (parsedJson.scholarships && Array.isArray(parsedJson.scholarships)) {
-                 setScholarshipResults(parsedJson.scholarships);
-            } else {
-                 throw new Error("Invalid structure returned by AI for scholarships.");
-            }
-          }
-
-          // Extract grounding sources
-          let fetchedSources = [];
-          const groundingMetadata = candidate.groundingMetadata;
-          if (groundingMetadata && groundingMetadata.groundingAttributions) {
-            fetchedSources = groundingMetadata.groundingAttributions
-              .map(attribution => ({
-                uri: attribution.web?.uri,
-                title: attribution.web?.title,
-              }))
-              .filter(source => source.uri && source.title);
-          }
-          setSources(fetchedSources);
-          setStep(4); // Move to results step
-        } else {
-          throw new Error("No content found in the API response.");
-        }
-      };
-      
-      await retryOperation(fetchApi);
-
-    } catch (e) {
-      console.error("Scholarship search failed:", e);
-      setError("Failed to find scholarships. Please check your network or try again.");
-      setStep(4); // Still move to results to display error
-    } finally {
-      setLoading(false);
-    }
-  }, [formData, loading]);
-
-  // --- Step 1: Personal Information ---
-  const StepOne = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-800 flex items-center">
-        <User className="w-6 h-6 mr-2 text-indigo-600" /> Personal Profile
-      </h2>
-      <p className="text-gray-600">Tell us about yourself to narrow down the search.</p>
-
-      <label className="block">
-        <span className="text-gray-700 font-medium">Full Name (Optional)</span>
-        <input
-          type="text"
-          name="name"
-          value={formData.name}
-          onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="John Doe"
-        />
-      </label>
-
-      <label className="block">
-        <span className="text-gray-700 font-medium">Current Student Status / Age</span>
-        <input
-          type="text"
-          name="age"
-          value={formData.age}
-          onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="e.g., High School Senior, College Freshman (20)"
-        />
-      </label>
-
-      <label className="block">
-        <span className="text-gray-700 font-medium">Ethnicity / Background (Optional, for specific scholarships)</span>
-        <input
-          type="text"
-          name="ethnicity"
-          value={formData.ethnicity}
-          onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="e.g., African American, First-generation, Veteran"
-        />
-      </label>
-      
-      <button
-        onClick={goToNextStep}
-        className="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ease-in-out"
-      >
-        Next: Academic Info
-      </button>
-    </div>
-  );
-
-  // --- Step 2: Academic Information ---
-  const StepTwo = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-800 flex items-center">
-        <GraduationCap className="w-6 h-6 mr-2 text-indigo-600" /> Academic Details
-      </h2>
-      <p className="text-gray-600">Provide details about your studies and performance.</p>
-
-      <label className="block">
-        <span className="text-gray-700 font-medium">Intended Major or Field of Study (Required)</span>
-        <input
-          type="text"
-          name="major"
-          value={formData.major}
-          onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="e.g., Computer Science, Nursing, Liberal Arts"
-          required
-        />
-      </label>
-
-      <label className="block">
-        <span className="text-gray-700 font-medium">Cumulative GPA (e.g., 3.8, 4.0)</span>
-        <input
-          type="text"
-          name="gpa"
-          value={formData.gpa}
-          onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="e.g., 3.5"
-        />
-      </label>
-
-      <label className="block">
-        <span className="text-gray-700 font-medium">Extracurriculars / Interests (Briefly list)</span>
-        <textarea
-          name="extracurriculars"
-          value={formData.extracurriculars}
-          onChange={handleChange}
-          rows="3"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder="e.g., Robotics Club, Volunteer at Local Shelter, Debate Team"
-        />
-      </label>
-      
-      <div className="flex justify-between space-x-4">
-        <button
-          onClick={goToPreviousStep}
-          className="w-1/2 py-3 px-4 border border-gray-300 text-gray-700 font-semibold rounded-lg shadow-sm hover:bg-gray-50 transition duration-150 ease-in-out"
-        >
-          Back
-        </button>
-        <button
-          onClick={goToNextStep}
-          disabled={!formData.major}
-          className={`w-1/2 py-3 px-4 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out ${
-            formData.major ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-400 cursor-not-allowed'
-          }`}
-        >
-          Next: Search
-        </button>
-      </div>
-    </div>
-  );
-
-  // --- Step 3: Confirmation and Search Trigger ---
-  const StepThree = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-800 flex items-center">
-        <Search className="w-6 h-6 mr-2 text-indigo-600" /> Ready to Search
-      </h2>
-      <p className="text-gray-600">Review your profile summary and start the scholarship search.</p>
-
-      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 space-y-3 text-sm">
-        <h3 className="font-bold text-gray-800">Your Profile:</h3>
-        <p><span className="font-medium text-indigo-600">Major:</span> {formData.major || 'N/A'}</p>
-        <p><span className="font-medium text-indigo-600">Status/Age:</span> {formData.age || 'N/A'}</p>
-        <p><span className="font-medium text-indigo-600">GPA:</span> {formData.gpa || 'N/A'}</p>
-        <p><span className="font-medium text-indigo-600">Background:</span> {formData.ethnicity || 'N/A'}</p>
-        <p><span className="font-medium text-indigo-600">Activities:</span> {formData.extracurriculars || 'N/A'}</p>
-      </div>
-      
-      <div className="flex justify-between space-x-4">
-        <button
-          onClick={goToPreviousStep}
-          className="w-1/2 py-3 px-4 border border-gray-300 text-gray-700 font-semibold rounded-lg shadow-sm hover:bg-gray-50 transition duration-150 ease-in-out"
-        >
-          Back to Edit
-        </button>
-        <button
-          onClick={searchScholarships}
-          disabled={!formData.major || loading}
-          className={`w-1/2 py-3 px-4 text-white font-semibold rounded-lg shadow-md flex items-center justify-center transition duration-150 ease-in-out ${
-            formData.major && !loading ? 'bg-green-600 hover:bg-green-700' : 'bg-green-400 cursor-not-allowed'
-          }`}
-        >
-          {loading ? (
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          ) : (
-            <Search className="w-5 h-5 mr-2" />
-          )}
-          {loading ? 'Searching...' : 'Find Scholarships Now'}
-        </button>
-      </div>
-    </div>
-  );
-
-  // --- Step 4: Results Display ---
-  const StepFour = () => (
-    <div className="space-y-8">
-      <h2 className="text-3xl font-bold text-gray-800 flex items-center">
-        {error ? (
-          <Clock className="w-7 h-7 mr-3 text-red-500" />
-        ) : (
-          <CheckCircle className="w-7 h-7 mr-3 text-green-600" />
-        )}
-        {error ? 'Search Failed' : 'Scholarship Results'}
-      </h2>
-      
-      {error && (
-        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          <p className="font-semibold">Error:</p>
-          <p>{error}</p>
+                <!-- Submit Button -->
+                <div class="mt-8">
+                    <button type="submit" id="submit-button" class="w-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-extrabold py-4 px-6 rounded-xl shadow-xl hover:shadow-2xl hover:from-indigo-600 hover:to-blue-700 transition-all duration-300 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed transform hover:scale-[1.01]">
+                        Find My Scholarships
+                    </button>
+                </div>
+            </form>
         </div>
-      )}
 
-      {!error && scholarshipResults.length === 0 && (
-        <div className="p-6 bg-yellow-50 border border-yellow-300 text-yellow-800 rounded-lg">
-          <p className="font-semibold">No direct matches found.</p>
-          <p>The search may not have found current opportunities matching your exact profile. Try adjusting your profile and searching again.</p>
-        </div>
-      )}
-
-      <div className="space-y-6">
-        {scholarshipResults.map((scholarship, index) => (
-          <div key={index} className="p-5 bg-white border border-indigo-100 rounded-xl shadow-lg hover:shadow-xl transition duration-300">
-            <h3 className="text-xl font-bold text-indigo-700 mb-2">{scholarship.name}</h3>
-            <p className="text-gray-600 mb-3">{scholarship.description}</p>
+        <!-- Results Section -->
+        <div id="results-container" class="bg-white p-8 rounded-xl shadow-xl shadow-indigo-100/50 mt-10 hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b border-gray-200 pb-4">Matching Scholarships</h2>
             
-            <div className="text-sm space-y-1">
-              <p className="font-semibold text-gray-700">Eligibility Highlights:</p>
-              <p className="text-gray-600 bg-indigo-50 p-2 rounded-md border-l-4 border-indigo-300">{scholarship.eligibility}</p>
+            <!-- Loader -->
+            <div id="loader" class="flex justify-center items-center h-32 hidden">
+                <div class="loader"></div>
             </div>
 
-            <p className="mt-4 text-xs text-gray-500">
-              Source: <span className="font-mono text-indigo-500">{scholarship.source}</span>
-            </p>
-          </div>
-        ))}
-      </div>
+            <!-- Error Message -->
+            <div id="error-message" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6" role="alert">
+                <strong class="font-bold">Error:</strong>
+                <span class="block sm:inline" id="error-text"></span>
+            </div>
 
-      {sources.length > 0 && (
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <h4 className="text-lg font-semibold text-gray-700 mb-3">Grounding Sources</h4>
-          <ul className="space-y-2 text-sm text-gray-600">
-            {sources.map((source, index) => (
-              <li key={index} className="flex items-start">
-                <span className="mr-2 text-indigo-500">→</span>
-                <a 
-                  href={source.uri} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="hover:underline text-indigo-600"
-                >
-                  {source.title || source.uri}
-                </a>
-              </li>
-            ))}
-          </ul>
+            <!-- Results List -->
+            <div id="results-list" class="space-y-6">
+                <!-- Scholarship cards will be injected here by JavaScript -->
+            </div>
         </div>
-      )}
-      
-      <button
-        onClick={() => setStep(1)}
-        className="w-full py-3 px-4 mt-6 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ease-in-out"
-      >
-        Start A New Search
-      </button>
+
     </div>
-  );
-  
-  // --- Determine Content to Render ---
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return <StepOne />;
-      case 2:
-        return <StepTwo />;
-      case 3:
-        return <StepThree />;
-      case 4:
-        return <StepFour />;
-      default:
-        return <StepOne />;
-    }
-  };
 
-  const steps = [
-    { name: 'Personal', icon: User, current: step === 1 },
-    { name: 'Academic', icon: GraduationCap, current: step === 2 },
-    { name: 'Search', icon: Search, current: step === 3 },
-    { name: 'Results', icon: CheckCircle, current: step === 4 },
-  ];
+    <!-- JavaScript Logic -->
+    <script type="module">
+        // --- DOM Elements ---
+        const form = document.getElementById('scholarship-form');
+        const submitButton = document.getElementById('submit-button');
+        const resultsContainer = document.getElementById('results-container');
+        const loader = document.getElementById('loader');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const resultsList = document.getElementById('results-list');
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-8 font-['Inter']">
-      <header className="text-center mb-10">
-        <h1 className="text-4xl font-extrabold text-indigo-800">ScholarSearch</h1>
-        <p className="text-lg text-gray-500 mt-2">Find the scholarships that match your potential.</p>
-        {isAuthReady && (
-          <p className="text-xs text-gray-400 mt-2">
-            User ID: {userId.substring(0, 8)}...{userId.substring(userId.length - 4)} (App ID: {appId.substring(0, 8)}...)
-          </p>
-        )}
-      </header>
+        // --- Gemini API Configuration ---
+        const API_KEY = "AIzaSyA0Fwzt0B648p6XPLC47LL1vssAWy2e6Fw"; 
+        const API_MODEL = "gemini-2.5-flash-preview-09-2025";
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent?key=${API_KEY}`;
 
-      {/* Progress Bar */}
-      <nav aria-label="Progress" className="mb-10 max-w-2xl mx-auto">
-        <ol role="list" className="flex items-center">
-          {steps.map((s, index) => (
-            <li key={s.name} className={`flex-1 ${index < steps.length - 1 ? 'pr-8 sm:pr-20' : ''}`}>
-              <div className="relative">
-                {index !== 0 && (
-                  <div className={`absolute inset-0 flex items-center ${index < step ? 'z-10' : ''}`}>
-                    <div className={`h-0.5 w-full ${index < step ? 'bg-indigo-600' : 'bg-gray-200'}`} />
-                  </div>
-                )}
-                <div 
-                  className={`w-10 h-10 flex items-center justify-center rounded-full border-2 ${
-                    index + 1 < step
-                      ? 'bg-indigo-600 border-indigo-600 text-white'
-                      : index + 1 === step
-                      ? 'border-indigo-600 text-indigo-600 bg-white font-bold'
-                      : 'border-gray-300 text-gray-500 bg-white'
-                  } transition duration-300 ease-in-out`}
-                >
-                  <s.icon className="w-5 h-5" />
-                </div>
-                <p className={`mt-2 text-sm ${index + 1 === step ? 'font-semibold text-indigo-600' : 'text-gray-500'}`}>{s.name}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </nav>
+        // --- Event Listener ---
+        form.addEventListener('submit', handleFormSubmit);
 
-      {/* Content Card */}
-      <div className="max-w-xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-2xl border border-indigo-100">
-        {renderStep()}
-      </div>
-    </div>
-  );
-};
+        /**
+         * Clears previous results and sets the loading state of the application.
+         * @param {boolean} isLoading - Whether the application is currently loading.
+         */
+        function setLoading(isLoading) {
+            resultsContainer.classList.remove('hidden');
 
-export default App;
+            if (isLoading) {
+                // ERASE PAST SEARCH RESULTS
+                resultsList.innerHTML = '';
+                errorMessage.classList.add('hidden');
+                
+                loader.classList.remove('hidden');
+                submitButton.disabled = true;
+                submitButton.textContent = 'Searching...';
+                
+            } else {
+                // Hide all loaders and enable button
+                loader.classList.add('hidden');
+                submitButton.disabled = false;
+                submitButton.textContent = 'Find My Scholarships';
+            }
+        }
+        
+        /**
+         * Displays an error message.
+         * @param {string} message - The error message to display.
+         */
+        function displayError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+            resultsList.innerHTML = ''; // Ensure list is clear if an error occurred
+        }
+
+        /**
+         * Fetches a resource with exponential backoff retry logic.
+         * @param {string} url - The URL to fetch.
+         * @param {object} options - The fetch options (method, headers, body, etc.).
+         * @returns {Promise<Response>} - The successful response object.
+         */
+        async function fetchWithBackoff(url, options) {
+            const MAX_RETRIES = 5;
+            let delay = 1000; // 1 second
+
+            for (let i = 0; i < MAX_RETRIES; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.status !== 429 && response.status < 500) {
+                        return response;
+                    }
+                    throw new Error(`Retryable status code: ${response.status}`);
+                } catch (error) {
+                    if (i === MAX_RETRIES - 1) {
+                        throw error;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; 
+                }
+            }
+        }
+
+        /**
+         * Handles the form submission event.
+         * @param {Event} event - The form submission event.
+         */
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            setLoading(true);
+
+            // 1. Collect form data
+            const formData = new FormData(form);
+            const userProfile = {
+                level: formData.get('academic-level'),
+                gpa: formData.get('gpa'),
+                major: formData.get('major'),
+                interests: formData.get('interests'),
+                demographics: formData.get('demographics')
+            };
+
+            // 2. Construct the prompts
+            const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            // Updated System Prompt: Added strict constraint against hallucination.
+            const systemPrompt = "You are a world-class scholarship research assistant. Your task is to find relevant, current, and legitimate scholarships for a student based on their profile. You are strictly forbidden from inventing or hallucinating any scholarship details, links, or deadlines; all data must be verified by the search tool. CRITICAL: You MUST only use links from the official, primary sponsoring organization's website (e.g., direct university, corporate, or non-profit domains). AVOID third-party scholarship aggregator sites. Provide the application link that points to the **direct application form or submission page**. This link must be the most stable and direct path to apply. You MUST use the provided Google Search tool to find scholarships. Provide your findings as a JSON array as described in the user prompt. Do not include any text, headers, or explanations outside the JSON block.";
+            
+            // Updated User Prompt: Increased requested count to 10 to encourage deeper searching.
+            const userPrompt = `
+                Here is the student's profile:
+                - Academic Level: ${userProfile.level}
+                - GPA: ${userProfile.gpa}
+                - Major/Field of Study: ${userProfile.major}
+                - Interests/Skills/Extracurriculars: ${userProfile.interests || 'N/A'}
+                - Demographic/Personal Info: ${userProfile.demographics || 'N/A'}
+
+                Please find up to 10 general scholarships that are a strong match for this profile. Use multiple search queries and take your time to ensure all 10 results are found if possible. Never make up or hallucinate scholarship data.
+                
+                CRITICAL REQUIREMENT: Only include scholarships that are currently accepting applications. This means the deadline must be in the future (after ${currentDate}). If the deadline has passed, do not include it. The link must be to the application form.
+                
+                For the general scholarships, provide:
+                1.  "name": The official name of the scholarship.
+                2.  "description": A brief one-sentence description of what it is and who it's for.
+                3.  "amount": The award amount (e.g., "$1,000", "Varies", "Up to $5,000").
+                4.  "deadline": The application deadline (e.g., "October 31, 2025", "Varies").
+                5.  "url": The direct URL to the scholarship's online application form or submission page.
+
+                Return ONLY a valid JSON array of scholarship objects with the above properties. Do not include any text, headers, or explanations outside the JSON array block.
+            `;
+
+            // 3. Call the Gemini API
+            try {
+                const responseData = await callGeminiApi(userPrompt, systemPrompt);
+                
+                if (responseData && Array.isArray(responseData)) {
+                    displayResults({
+                        scholarships: responseData,
+                    });
+                } else {
+                    displayError("The AI returned an unexpected format. Please try again.");
+                }
+            } catch (error) {
+                console.error("Error calling Gemini API:", error);
+                displayError(`An error occurred while fetching scholarships: ${error.message}`);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        /**
+         * Calls the Gemini API with exponential backoff.
+         */
+        async function callGeminiApi(userPrompt, systemPrompt) {
+            const payload = {
+                contents: [{ 
+                    parts: [{ text: userPrompt }] 
+                }],
+                tools: [{ 
+                    "google_search": {} 
+                }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+            
+            const response = await fetchWithBackoff(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                let errorBody = await response.text();
+                try {
+                    const errorJson = JSON.parse(errorBody);
+                    if (errorJson.error && errorJson.error.message) {
+                        errorBody = errorJson.error.message;
+                    }
+                } catch (e) {} 
+                
+                // Explicit check for authentication errors (401/403)
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error(`API request failed with status ${response.status} (Authentication/Permission Denied). Please ensure the API key is valid.`);
+                }
+                
+                throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+            }
+
+            const result = await response.json();
+            
+            const candidate = result.candidates?.[0];
+            const jsonText = candidate?.content?.parts?.[0]?.text;
+
+            if (!jsonText) {
+                if (result.promptFeedback) {
+                    console.error("Prompt Feedback:", result.promptFeedback);
+                    throw new Error(`Request was blocked. Reason: ${result.promptFeedback.blockReason}`);
+                }
+                throw new Error("Invalid API response structure. No text content part found.");
+            }
+
+            // --- Robust JSON PARSING LOGIC ---
+            try {
+                let cleanJsonText = jsonText.trim();
+                cleanJsonText = cleanJsonText
+                    .replace(/```json\s*/gs, '') 
+                    .replace(/```/gs, '')
+                    .trim();
+
+                let finalJsonString = cleanJsonText;
+                
+                const firstIndex = finalJsonString.search(/[\{\[]/);
+                
+                if (firstIndex !== -1) {
+                    const startChar = finalJsonString[firstIndex];
+                    const endChar = (startChar === '{') ? '}' : ']';
+                    const lastIndex = finalJsonString.lastIndexOf(endChar);
+
+                    if (lastIndex > firstIndex) {
+                        finalJsonString = finalJsonString.substring(firstIndex, lastIndex + 1);
+                    } else {
+                        throw new Error("Cannot find matching closing brace/bracket.");
+                    }
+                } else {
+                    throw new Error("No starting JSON character ({ or [) found.");
+                }
+
+                let parsedResult = JSON.parse(finalJsonString);
+                
+                // Expect an array of scholarships (new simplified structure)
+                if (Array.isArray(parsedResult)) {
+                    return parsedResult;
+                } else if (typeof parsedResult === 'object' && parsedResult !== null && parsedResult.scholarships) {
+                    // Backwards compatibility for old JSON structure
+                    return parsedResult.scholarships;
+                }
+                
+                throw new Error("Parsed content did not match expected structure (JSON array of scholarships).");
+                
+            } catch (parseError) {
+                console.error("Failed to parse JSON from raw API response. Raw Text:", jsonText, parseError);
+                throw new Error(`The model response could not be parsed as JSON. Syntax Error: ${parseError.message}.`);
+            }
+            // --- END JSON PARSING LOGIC ---
+        }
+
+        /**
+         * Simple utility to escape HTML characters in dynamic text.
+         */
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[m];
+            });
+        }
+
+        /**
+         * Displays the scholarship results as cards.
+         * @param {object} resultsObject - Object containing 'scholarships' array.
+         */
+        function displayResults(resultsObject) {
+            resultsList.innerHTML = ''; // Clear previous results
+
+            const scholarships = resultsObject.scholarships || [];
+
+            // --- Display General Scholarship Cards ---
+            if (scholarships.length === 0) {
+                resultsList.innerHTML += `<p class="text-gray-500 text-center p-4 rounded-lg bg-gray-100 border border-gray-300">No matching scholarships were found based on your profile. Try broadening your search terms.</p>`;
+                return;
+            }
+
+            scholarships.forEach(scholarship => {
+                const cardClasses = 'border rounded-xl p-6 shadow-md transition-all duration-300 bg-white border-l-4 border-indigo-500 hover:shadow-lg hover:border-blue-500';
+                
+                const buttonClasses = 'inline-block bg-gradient-to-r from-indigo-500 to-blue-600 text-white font-semibold py-2 px-5 rounded-lg shadow-lg hover:from-indigo-600 hover:to-blue-700 transition-colors transform hover:-translate-y-0.5';
+
+                const icon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 inline mr-1 text-green-600">
+                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                       </svg>`;
+
+                const card = document.createElement('div');
+                card.className = cardClasses;
+                
+                card.innerHTML = `
+                    <h3 class="text-xl font-bold text-gray-800">${icon}${escapeHTML(scholarship.name)}</h3>
+                    <p class="text-gray-600 mt-2">${escapeHTML(scholarship.description)}</p>
+                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+                        <div>
+                            <span class="text-xs font-semibold uppercase text-gray-400">Amount</span>
+                            <p class="text-lg font-bold text-green-600">${escapeHTML(scholarship.amount) || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs font-semibold uppercase text-gray-400">Deadline</span>
+                            <p class="text-lg font-bold text-red-600">${escapeHTML(scholarship.deadline) || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <a href="${escapeHTML(scholarship.url)}" 
+                           target="_blank" 
+                           rel="noopener noreferrer" 
+                           class="${buttonClasses}">
+                            View Details & Apply &rarr;
+                        </a>
+                    </div>
+                `;
+                resultsList.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
